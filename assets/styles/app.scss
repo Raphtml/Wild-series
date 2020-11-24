@@ -1,0 +1,13 @@
+$theme-colors: (
+        "primary": #695d46,
+        "secondary": #fff2cc,
+        "third": #a6aea2
+);
+
+@import "~bootstrap/scss/bootstrap";
+
+
+
+body {
+    background-color: white;
+}
