@@ -1,7 +1,7 @@
 {% extends "base.html.twig" %}
 
 {% block title %}
-    Série #{{ program.id }}
+    {{ program.title }}
 {% endblock title %}
 
 {% block body %}
@@ -13,6 +13,17 @@
             <p>Catégorie : {{ program.category.name }}</p>
         </div>
     </div>
+
+     <div>
+        {% for season in seasons %}
+            <a href="{{ path('program_season_show', {programId : program.id, seasonId : season.id}) }}"><h3>Saison {{ season.number }} :</h3></a>
+            <p>{{ season.description }}</p>
+            <h4>Année de sortie : {{ season.year }}</h4>
+        {% else %}
+            Aucune saison trouvée pour {{ program.title }}
+        {% endfor %}
+    </div>
+
 
     <a href="{{ path('program_index') }}">
         Retour à la liste des programmes
