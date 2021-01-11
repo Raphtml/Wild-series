@@ -28,10 +28,10 @@ class ActorFixtures extends Fixture implements DependentFixtureInterface
         }
 
         $faker = Faker\Factory::create();
-        for ($i=4; $i < 200; $i++) {
+        for ($i=4; $i < 50; $i++) {
             $actor = new Actor();
             $actor->setName($faker->name);
-            $actor->addProgram($this->getReference('program_' . rand(0, 4)));
+            $actor->addProgram($this->getReference('program_' . rand(0, 5), $actor));
             $manager->persist($actor);
             $this->addReference('actor_' . $i, $actor);
         }

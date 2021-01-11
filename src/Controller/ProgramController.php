@@ -2,17 +2,21 @@
 
 namespace App\Controller;
 
+use App\Entity\Comment;
 use App\Entity\Episode;
 use App\Entity\Program;
 use App\Entity\Season;
+use App\Entity\User;
+use App\Form\CommentType;
 use App\Form\ProgramType;
 use App\Service\Slugify;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\ParamConverter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Mailer\MailerInterface;
+use Symfony\Component\Mime\Email;
 use Symfony\Component\Routing\Annotation\Route;
-
 
 /**
  * @Route("/programs", name="program_")
@@ -38,9 +42,11 @@ class ProgramController extends AbstractController
      * @Route("/new", name="new")
      * @param Request $request
      * @param Slugify $slugify
+     * @param MailerInterface $mailer
      * @return Response
+     * @throws \Symfony\Component\Mailer\Exception\TransportExceptionInterface
      */
-    public function new(Request $request, Slugify $slugify): Response
+    public function new(Request $request, Slugify $slugify, MailerInterface $mailer): Response
     {
         $program = new Program();
         $form = $this->createForm(ProgramType::class, $program);
@@ -51,6 +57,13 @@ class ProgramController extends AbstractController
             $program->setSlug($slug);
             $entityManager->persist($program);
             $entityManager->flush();
+            $email = (new Email())
+                ->from($this->getParameter('mailer_from'))
+                ->to($this->getParameter('mailer_to'))
+                ->subject('Une nouvelle série vient d\'être publiée !')
+                ->html($this->renderView('Program/newProgramEmail.html.twig', ['program' => $program]));
+
+            $mailer->send($email);
             return $this->redirectToRoute('program_index');
         }
         return $this->render('program/new.html.twig', [
@@ -112,14 +125,32 @@ class ProgramController extends AbstractController
      * @param Program $program
      * @param Season $season
      * @param Episode $episode
+     * @param Request $request
      * @return Response
      */
-    public function showEpisode(Program $program, Season $season, Episode $episode): Response
+    public function showEpisode(Program $program, Season $season, Episode $episode, Request $request): Response
     {
+        $comment = new Comment();
+        $form = $this->createForm(CommentType::class, $comment);
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            $entityManager = $this->getDoctrine()->getManager();
+            $comment->setEpisode($episode);
+            $this->denyAccessUnlessGranted('IS_AUTHENTICATED_FULLY');
+            $user = $this->getUser();
+
+            /** @var User $user */
+            $comment->setAuthor($user);
+            $entityManager->persist($comment);
+            $entityManager->flush();
+        }
+
         return $this->render('program/episode_show.html.twig', [
            'program' => $program,
            'season' => $season,
-           'episode' => $episode
+           'episode' => $episode,
+            'form' => $form->createView(),
         ]);
     }
 }
