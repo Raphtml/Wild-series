@@ -14,6 +14,9 @@
                 <p>{{ comment.comment }}</p>
                 <p>Rate : {{ comment.rate }}</p>
             </div>
+            {% if is_granted("ROLE_ADMIN") or is_granted("ROLE_CONTRIBUTOR")%}
+                {{ include('comment/_delete_form.html.twig') }}
+            {% endif %}
         {% endfor %}
         {% if app.user %}
             <h3>Add a comment !</h3>

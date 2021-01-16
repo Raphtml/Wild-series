@@ -8,15 +8,15 @@ use App\Entity\Program;
 use App\Entity\Season;
 use App\Entity\User;
 use App\Form\CommentType;
-use App\Form\ProgramType;
+use App\Form\Program1Type;
+use App\Repository\ProgramRepository;
 use App\Service\Slugify;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\ParamConverter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Mailer\MailerInterface;
-use Symfony\Component\Mime\Email;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
 /**
  * @Route("/programs", name="program_")
@@ -24,55 +24,53 @@ use Symfony\Component\Routing\Annotation\Route;
 class ProgramController extends AbstractController
 {
     /**
-     * @Route("/", name="index")
+     * @Route("/", name="index", methods={"GET"})
+     * @param ProgramRepository $programRepository
+     * @return Response
      */
-    public function index(): Response
+    public function index(ProgramRepository $programRepository): Response
     {
         $programs = $this->getDoctrine()
             ->getRepository(Program::class)
             ->findAll();
 
         return $this->render('program/index.html.twig', [
-            'website' => 'Wild Series' ,
-            'programs' => $programs
+            'website' => 'Wild Series',
+            'programs' => $programs,
         ]);
     }
 
     /**
-     * @Route("/new", name="new")
+     * @Route("/new", name="new", methods={"GET","POST"})
      * @param Request $request
      * @param Slugify $slugify
-     * @param MailerInterface $mailer
      * @return Response
-     * @throws \Symfony\Component\Mailer\Exception\TransportExceptionInterface
      */
-    public function new(Request $request, Slugify $slugify, MailerInterface $mailer): Response
+    public function new(Request $request, Slugify $slugify): Response
     {
         $program = new Program();
-        $form = $this->createForm(ProgramType::class, $program);
+        $form = $this->createForm(Program1Type::class, $program);
         $form->handleRequest($request);
+
         if ($form->isSubmitted() && $form->isValid()) {
             $entityManager = $this->getDoctrine()->getManager();
             $slug = $slugify->generate($program->getTitle());
             $program->setSlug($slug);
             $entityManager->persist($program);
+            $program->setOwner($this->getUser());
             $entityManager->flush();
-            $email = (new Email())
-                ->from($this->getParameter('mailer_from'))
-                ->to($this->getParameter('mailer_to'))
-                ->subject('Une nouvelle série vient d\'être publiée !')
-                ->html($this->renderView('Program/newProgramEmail.html.twig', ['program' => $program]));
 
-            $mailer->send($email);
             return $this->redirectToRoute('program_index');
         }
+
         return $this->render('program/new.html.twig', [
-            'form' => $form->createView()
+            'program' => $program,
+            'form' => $form->createView(),
         ]);
     }
 
     /**
-     * @Route("/{programSlug}", methods={"GET"}, name="show")
+     * @Route("/{programSlug}", name="show", methods={"GET"})
      * @ParamConverter("program", class="App\Entity\Program", options={"mapping": {"programSlug": "slug"}})
      * @param Program $program
      * @return Response
@@ -89,10 +87,39 @@ class ProgramController extends AbstractController
             );
         }
 
-
         return $this->render('program/show.html.twig', [
             'program' => $program,
-            'seasons' => $seasons,
+            'seasons' => $seasons
+        ]);
+    }
+
+    /**
+     * @Route("/{programSlug}/edit", name="edit", methods={"GET","POST"})
+     * @param Request $request
+     * @param Program $program
+     * @return Response
+     * @ParamConverter("program", class="App\Entity\Program", options={"mapping": {"programSlug": "slug"}})
+     */
+    public function edit(Request $request, Program $program): Response
+    {
+        if (!(($this->getUser() == $program->getOwner()) || ($program->getOwner() == null))) {
+            throw new AccessDeniedException('Only the owner can edit the program!');
+        }
+
+        $form = $this->createForm(Program1Type::class, $program);
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            $this->getDoctrine()->getManager()->flush();
+
+            return $this->redirectToRoute('program_show', [
+                'program' => $program
+            ]);
+        }
+
+        return $this->render('program/edit.html.twig', [
+            'program' => $program,
+            'form' => $form->createView(),
         ]);
     }
 
@@ -147,10 +174,24 @@ class ProgramController extends AbstractController
         }
 
         return $this->render('program/episode_show.html.twig', [
-           'program' => $program,
-           'season' => $season,
-           'episode' => $episode,
+            'program' => $program,
+            'season' => $season,
+            'episode' => $episode,
             'form' => $form->createView(),
         ]);
+    }
+
+    /**
+     * @Route("/{id}", name="delete", methods={"DELETE"})
+     */
+    public function delete(Request $request, Program $program): Response
+    {
+        if ($this->isCsrfTokenValid('delete'.$program->getId(), $request->request->get('_token'))) {
+            $entityManager = $this->getDoctrine()->getManager();
+            $entityManager->remove($program);
+            $entityManager->flush();
+        }
+
+        return $this->redirectToRoute('program_index');
     }
 }

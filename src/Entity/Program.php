@@ -41,7 +41,7 @@ class Program
     private $poster;
 
     /**
-     * @ORM\ManyToOne(targetEntity=Category::class)
+     * @ORM\ManyToOne(targetEntity=Category::class, inversedBy="programs")
      * @ORM\JoinColumn(nullable=false)
      */
     private $category;
@@ -60,6 +60,12 @@ class Program
      * @ORM\Column(type="string", length=255)
      */
     private $slug;
+
+    /**
+     * @ORM\ManyToOne(targetEntity=User::class, inversedBy="programs")
+     * @ORM\JoinColumn(nullable=false)
+     */
+    private $owner;
 
     public function __construct()
     {
@@ -185,6 +191,18 @@ class Program
     public function setSlug(string $slug): self
     {
         $this->slug = $slug;
+
+        return $this;
+    }
+
+    public function getOwner(): ?User
+    {
+        return $this->owner;
+    }
+
+    public function setOwner(?User $owner): self
+    {
+        $this->owner = $owner;
 
         return $this;
     }

@@ -3,12 +3,17 @@
 namespace App\Controller;
 
 use App\Entity\Comment;
+use App\Entity\Episode;
+use App\Entity\Program;
+use App\Entity\Season;
 use App\Form\CommentType;
 use App\Repository\CommentRepository;
+use Sensio\Bundle\FrameworkExtraBundle\Configuration\IsGranted;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
 /**
  * @Route("/comment")
@@ -17,6 +22,8 @@ class CommentController extends AbstractController
 {
     /**
      * @Route("/", name="comment_index", methods={"GET"})
+     * @param CommentRepository $commentRepository
+     * @return Response
      */
     public function index(CommentRepository $commentRepository): Response
     {
@@ -27,6 +34,8 @@ class CommentController extends AbstractController
 
     /**
      * @Route("/new", name="comment_new", methods={"GET","POST"})
+     * @IsGranted("ROLE_ADMIN")
+     * @IsGranted("ROLE_CONTRIBUTOR")
      */
     public function new(Request $request): Response
     {
@@ -80,15 +89,23 @@ class CommentController extends AbstractController
 
     /**
      * @Route("/{id}", name="comment_delete", methods={"DELETE"})
+     * @IsGranted("ROLE_CONTRIBUTOR")
+     * @param Request $request
+     * @param Comment $comment
+     * @return Response
      */
     public function delete(Request $request, Comment $comment): Response
     {
+        if (!(($this->isGranted("ROLE_ADMIN")) || ($this->getUser() == $comment->getAuthor()))) {
+            throw new AccessDeniedException('Only the author can delete the comment!');
+        }
+
         if ($this->isCsrfTokenValid('delete'.$comment->getId(), $request->request->get('_token'))) {
             $entityManager = $this->getDoctrine()->getManager();
             $entityManager->remove($comment);
             $entityManager->flush();
         }
 
-        return $this->redirectToRoute('comment_index');
+        return $this->redirectToRoute('program_index');
     }
 }
