@@ -6,10 +6,12 @@
         <a href="{{ path('episode_index') }}" style="color: black; opacity: 40%; margin-left: 10px">Episodes</a>
         {% if app.user %}
            <div style="margin-left: 500px">{{ app.user.email }}
-            <a href="{{ path('app_logout') }}" style="color: black; opacity: 40%; margin-left: 10px"> Se déconnecter</a>
+               <a href="{{ path('profile') }}" style="color: black; opacity: 40%; margin-left: 10px">Mon compte</a>
+                <a href="{{ path('app_logout') }}" style="color: black; opacity: 40%; margin-left: 10px"> Se déconnecter</a>
            </div>
         {% else %}
             <a href="{{ path('app_login') }}" style="color: black; opacity: 40%; margin-left: 10px"> Se connecter</a>
+            <a href="{{ path('app_register') }}" style="color: black; opacity: 40%; margin-left: 10px">Créer un compte</a>
         {% endif %}
     </div>
 </nav>
