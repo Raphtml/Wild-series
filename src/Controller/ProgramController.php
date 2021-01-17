@@ -9,6 +9,8 @@ use App\Entity\Season;
 use App\Entity\User;
 use App\Form\CommentType;
 use App\Form\Program1Type;
+use App\Form\SearchProgramFormType;
+use App\Form\SearchProgramType;
 use App\Repository\ProgramRepository;
 use App\Service\Slugify;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\ParamConverter;
@@ -24,19 +26,27 @@ use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 class ProgramController extends AbstractController
 {
     /**
-     * @Route("/", name="index", methods={"GET"})
+     * @Route("/", name="index", methods={"GET", "POST"})
+     * @param Request $request
      * @param ProgramRepository $programRepository
      * @return Response
      */
-    public function index(ProgramRepository $programRepository): Response
+    public function index(Request $request, ProgramRepository $programRepository): Response
     {
-        $programs = $this->getDoctrine()
-            ->getRepository(Program::class)
-            ->findAll();
+        $form = $this->createForm(SearchProgramType::class);
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()){
+            $search = $form->getData()['search'];
+            $programs = $programRepository->findLikeName($search);
+        } else {
+            $programs = $programRepository->findAll();
+        }
 
         return $this->render('program/index.html.twig', [
             'website' => 'Wild Series',
             'programs' => $programs,
+            'form' => $form->createView(),
         ]);
     }
 
